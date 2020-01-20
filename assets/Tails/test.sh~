@@ -1,0 +1,6 @@
+#!/bin/bash
+for name in Tails_*
+do
+	newname = "$(echo "$name" | cut -c7-)"
+	mv "$name" "$newname"
+done
