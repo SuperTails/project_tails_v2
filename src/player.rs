@@ -2,6 +2,8 @@ use crate::animation::Animation;
 use crate::physical::{Physical, Vector2};
 use crate::renderable::Renderable;
 use crate::block::TerrainGetter;
+use crate::input;
+use sdl2::keyboard::Keycode;
 use sdl2::render::{Canvas, RenderTarget};
 use std::time::Duration;
 use crate::camera::Camera;
@@ -35,6 +37,20 @@ impl Player {
             self.velocity.y = MAX_FALL_SPEED;
         }
 
+        if input::key_held(Keycode::D) {
+            self.velocity.x += 0.05;
+        } else if input::key_held(Keycode::A) {
+            self.velocity.x -= 0.05;
+        } else if self.velocity.x.abs() >= 0.02 {
+            self.velocity.x -= self.velocity.x.signum() * 0.02;
+        } else {
+            self.velocity.x = 0.0;
+        }
+
+        if input::key_pressed(Keycode::Space) {
+            self.velocity.y = -5.0;
+        }
+
         self.animation.update();
 
         let (ground, _angle) = find_ground_height(self.get_position(), 5.0, 10.0, getter).map(|(g, a)| (g as f64, a)).unwrap_or((std::f64::INFINITY, 0));
@@ -62,7 +78,9 @@ impl Physical for Player {
 
 impl Renderable for Player {
     fn render<T: RenderTarget>(&self, canvas: &mut Canvas<T>, camera: &Camera) -> Result<(), String> {
-        (self.position, &self.animation).render(canvas, camera)
+        let mut pos = self.position;
+        pos.y -= self.animation.height() as f64;
+        (pos, &self.animation).render(canvas, camera)
     }
 }
 
@@ -83,7 +101,7 @@ pub fn find_ground_height(position: Vector2, x_radius: f64, _y_radius: f64, gett
 fn collide_line(position: (i32, i32), getter: &TerrainGetter) -> Option<(u32, u8)> {
     let mut result = None;
     let mut y = position.1 + 17;
-    while getter.is_occupied(position.0, y - 1, 0) {
+    while getter.is_occupied(position.0, y - 1, 0) || (result.is_none() && y >= position.1) {
         result = Some(y);
         y -= 1;
     }

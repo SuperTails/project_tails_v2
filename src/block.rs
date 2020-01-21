@@ -1,5 +1,5 @@
 use crate::asset_mgr::GraphicsHolder;
-use sdl2::render::{WindowCanvas, TextureCreator};
+use sdl2::render::TextureCreator;
 use sdl2::surface::Surface;
 use sdl2::rect::{Rect, Point};
 use serde::{Deserialize, Serialize};
@@ -119,15 +119,27 @@ impl<'a> TerrainGetter<'a> {
 
         let block_x = x as usize / BLOCK_PIXEL_LENGTH;
         let block_y = y as usize / BLOCK_PIXEL_LENGTH;
-        let tile_x = (x as usize % BLOCK_PIXEL_LENGTH) / TILE_PIXEL_LENGTH;
+        let mut tile_x = (x as usize % BLOCK_PIXEL_LENGTH) / TILE_PIXEL_LENGTH;
         let tile_y = (y as usize % BLOCK_PIXEL_LENGTH) / TILE_PIXEL_LENGTH;
 
         let (block_idx, block_flags) = self.block_map[block_y * self.width + block_x]?;
         let block = &self.blocks[block_idx];
 
+        // TODO: Allow for more flags
+        if block_flags != 0 {
+            tile_x = BLOCK_TILE_LENGTH - 1 - tile_x;
+        }
+
         let layer = &block.collision_layers[layer_idx];
+
+        let tile_entry = &layer.tiles[tile_y * 8 + tile_x];
         
-        let tile = self.tiles[layer.tiles[tile_y * 8 + tile_x].tile - 340];
+        let mut tile = self.tiles[tile_entry.tile - 340];
+
+        // TODO: Adjust angle, allow for vertical flip
+        if (block_flags != 0) ^ tile_entry.flip {
+            tile.0.reverse();
+        }
         
         Some(tile)
     }
@@ -137,7 +149,6 @@ impl Block {
     fn add_graphics_cached<T>(
         name: String,
         block: &Block,
-        canvas: &WindowCanvas,
         creator: &'static TextureCreator<T>,
         tileset: &Tileset,
         horiz_flip: &Surface,
@@ -149,7 +160,7 @@ impl Block {
 
         let mut target = Surface::new(BLOCK_PIXEL_LENGTH as u32, BLOCK_PIXEL_LENGTH as u32, PixelFormatEnum::RGBA8888).unwrap();
         
-        for layer in block.graphics_layers.iter() {
+        for layer in block.graphics_layers.iter().rev() {
             for (idx, tile) in layer.tiles.iter().enumerate() {
                 let row = idx / BLOCK_TILE_LENGTH;
                 let col = idx % BLOCK_TILE_LENGTH;
@@ -194,7 +205,6 @@ impl Block {
     pub fn add_graphics_multi<'a, T, U>(
         input: U,
         tileset: &Tileset,
-        canvas: &WindowCanvas,
         creator: &'static TextureCreator<T>,
     ) where U: Iterator<Item = (String, &'a Block)> {
         let holder = GraphicsHolder::get();
@@ -209,7 +219,6 @@ impl Block {
             Block::add_graphics_cached(
                 name,
                 block,
-                canvas,
                 creator,
                 tileset,
                 &horiz_flip,
@@ -217,32 +226,6 @@ impl Block {
                 &both_flip,
             )
         }
-    }
-
-    pub fn add_graphics<T>(
-        name: String,
-        block: &Block,
-        tileset: &Tileset,
-        canvas: &WindowCanvas,
-        creator: &'static TextureCreator<T>,
-    ) {
-        let holder = GraphicsHolder::get();
-
-        let tileset_gfx = holder.get_pair(&tileset.image).unwrap();
-        let horiz_flip = flip(&tileset_gfx.0, true, false);
-        let vert_flip = flip(&tileset_gfx.0, false, true);
-        let both_flip = flip(&tileset_gfx.0, true, true);
-
-        Block::add_graphics_cached(
-            name,
-            block,
-            canvas,
-            creator,
-            tileset,
-            &horiz_flip,
-            &vert_flip,
-            &both_flip,
-        )
     }
 }
 

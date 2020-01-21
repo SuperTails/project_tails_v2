@@ -1,39 +1,5 @@
 use std::str::FromStr;
-
-pub struct Entity {
-    x: f64,
-    y: f64,
-    kind: String,
-    flags: Vec<String>,
-}
-
-impl FromStr for Entity {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.split(' ');
-        let x = s
-            .next()
-            .ok_or_else(|| "Expected x".to_string())?
-            .parse::<f64>()
-            .map_err(|e| e.to_string())?;
-
-        let y = s
-            .next()
-            .ok_or_else(|| "Expected y".to_string())?
-            .parse::<f64>()
-            .map_err(|e| e.to_string())?;
-
-        let kind = s
-            .next()
-            .ok_or_else(|| "Expected name".to_string())?
-            .to_string();
-
-        let flags = s.map(String::from).collect::<Vec<String>>();
-
-        Ok(Entity { x, y, kind, flags })
-    }
-}
+use crate::entity::Entity;
 
 pub struct ActFile {
     pub version: String,

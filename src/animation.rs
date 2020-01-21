@@ -29,6 +29,13 @@ impl Animation {
         }
     }
 
+    pub fn height(&self) -> u32 {
+        let guard = GraphicsHolder::get();
+        let pair = guard.get_pair(&self.spritesheet).unwrap();
+
+        pair.0.height()
+    }
+
     /// Possibly advances which frame the animation is on,
     /// depending on whether enough time has passed.
     pub fn update(&mut self) {
