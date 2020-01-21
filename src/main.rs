@@ -1,31 +1,29 @@
-mod act;
-mod animation;
-mod asset_mgr;
 mod block;
-mod physical;
 mod player;
-mod renderable;
-mod camera;
-mod input;
 mod entity;
+mod act;
+
+use gamefox::renderable::Renderable;
+use gamefox::camera::Camera;
+use gamefox::physical::{Physical, Vector2};
+use gamefox::input;
+use gamefox::asset_mgr::GraphicsHolder;
 
 use act::ActFile;
-use asset_mgr::{GraphicsHolder, GRAPHICS_HOLDER};
 use player::Player;
-use renderable::Renderable;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
-use std::path::Path;
-use std::sync::Mutex;
-use std::time::Duration;
+use entity::Entity;
 use block::{Block, Tileset};
-use camera::Camera;
-use physical::{Physical, Vector2};
+
+use std::path::Path;
+use std::time::Duration;
+
 use sdl2::rect::Point;
 use sdl2::{Sdl, VideoSubsystem};
 use sdl2::video::WindowContext;
 use sdl2::render::{TextureCreator, WindowCanvas};
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
 use clap::{Arg, App};
 
 struct SdlSystem {
@@ -74,9 +72,7 @@ fn main() {
     
     let mut sdl_system = SdlSystem::new();
 
-    let holder = GraphicsHolder::load_all(Path::new("./assets/"), sdl_system.creator);
-    println!("Loaded {} textures", holder.0.len());
-    GRAPHICS_HOLDER.set(Mutex::new(holder)).ok().unwrap();
+    GraphicsHolder::load(Path::new("./assets/"), sdl_system.creator).ok().unwrap();
 
     let blocks = block::load_blocks(Path::new("./assets/EmeraldHillZone/"), "Block").unwrap();
     println!("Loaded {} blocks", blocks.len());
@@ -87,6 +83,15 @@ fn main() {
         .unwrap()
         .parse::<ActFile>()
         .unwrap();
+
+    let act_file2 = format!("{}", act_file).parse::<ActFile>().unwrap();
+    assert_eq!(act_file, act_file2);
+
+    act_file.entities = vec![
+        Entity::new(Vector2 { x: 100.0, y: 300.0, }, "BEEBADNIK".to_string(), Vec::new()),
+        Entity::new(Vector2 { x: 100.0, y: 400.0, }, "BEEBADNIK".to_string(), Vec::new()),
+    ];
+    
     println!("Loaded act with {} entities and a width of {}", act_file.entities.len(), act_file.width);
 
     let mut camera = Camera { position: Vector2 { x: 0.0, y: 0.0 }};
@@ -115,7 +120,7 @@ fn main() {
         }
         player.update(&getter);
         camera.position = player.get_position();
-        camera.position.x -= 400.0;
+        camera.position.x -= 200.0;
         camera.position.y -= 300.0;
 
         let events = event_pump.poll_iter().collect::<Vec<_>>();

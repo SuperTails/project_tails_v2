@@ -1,12 +1,12 @@
-use crate::animation::Animation;
-use crate::physical::{Physical, Vector2};
-use crate::renderable::Renderable;
+use gamefox::animation::Animation;
+use gamefox::physical::{Physical, Vector2};
+use gamefox::renderable::Renderable;
+use gamefox::input;
+use gamefox::camera::Camera;
 use crate::block::TerrainGetter;
-use crate::input;
 use sdl2::keyboard::Keycode;
 use sdl2::render::{Canvas, RenderTarget};
 use std::time::Duration;
-use crate::camera::Camera;
 
 pub struct Player {
     position: Vector2,
@@ -16,15 +16,15 @@ pub struct Player {
     animation: Animation,
 }
 
-const MAX_FALL_SPEED: f64 = 16.0;
-const GRAVITY: f64 = 0.21875;
+const MAX_FALL_SPEED: f64 = /*16.0*/ 1.0;
+const GRAVITY: f64 = /*0.21875*/ 0.02;
 
 impl Player {
     pub fn new() -> Player {
         Player {
             position: Vector2 { x: 0.0, y: 0.0 },
-            velocity: Vector2 { x: 0.5, y: 0.1 },
-            animation: Animation::new("Tails/Idle".to_string(), 5, Duration::from_millis(200)),
+            velocity: Vector2 { x: 0.5, y: 0.5 },
+            animation: Animation::new("Tornado".to_string(), 4, Duration::from_millis(50)),
         }
     }
 
@@ -48,21 +48,15 @@ impl Player {
         }
 
         if input::key_pressed(Keycode::Space) {
-            self.velocity.y = -5.0;
+            self.velocity.y -= 0.4;
         }
 
         self.animation.update();
 
         let (ground, _angle) = find_ground_height(self.get_position(), 5.0, 10.0, getter).map(|(g, a)| (g as f64, a)).unwrap_or((std::f64::INFINITY, 0));
 
-        let floor = if ground < 1000.0 {
-            ground
-        } else {
-            1000.0
-        };
-
-        if self.position.y >= floor {
-            self.position.y = floor;
+        if self.position.y >= ground {
+            self.position.y = ground;
             if self.velocity.y > 0.0 {
                 self.velocity.y = 0.0;
             }

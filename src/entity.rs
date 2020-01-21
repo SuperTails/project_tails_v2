@@ -1,13 +1,14 @@
+use gamefox::physical::Vector2;
+use gamefox::renderable::Renderable;
+use gamefox::camera::Camera;
+use gamefox::animation::Animation;
 use std::str::FromStr;
-use crate::renderable::Renderable;
-use crate::camera::Camera;
 use sdl2::render::{RenderTarget, Canvas};
-use crate::physical::Vector2;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
-use crate::animation::Animation;
 use std::time::Duration;
 use std::sync::RwLock;
+use std::fmt;
 
 lazy_static! {
     static ref ENTITY_DATA: RwLock<HashMap<String, Vec<Animation>>> = {
@@ -15,7 +16,7 @@ lazy_static! {
         let mut result = HashMap::new();
 
         for line in data.lines() {
-            let mut parts = line.split(' ');
+            let mut parts = line.split(' ').filter(|s| !s.is_empty());
             assert_eq!(parts.next(), Some("OBJ"));
             let kind = parts.next().unwrap().to_string();
             let mut parts = parts.skip(7);
@@ -47,6 +48,7 @@ lazy_static! {
     };
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Entity {
     position: Vector2,
     kind: String,
@@ -61,13 +63,35 @@ impl Entity {
             anim.update();
         }
     }
+
+    pub fn new(position: Vector2, kind: String, flags: Vec<String>) -> Entity {
+        if ENTITY_DATA.read().unwrap().get(&kind).is_none() {
+            panic!("Invalid entity kind {:?}", kind);
+        }
+
+        Entity {
+            position,
+            kind,
+            flags,
+        }
+    }
+}
+
+impl fmt::Display for Entity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {} {} ", self.position.x, self.position.y, self.kind)?;
+        for flag in self.flags.iter() {
+            write!(f, "{} ", flag)?;
+        }
+        Ok(())
+    }
 }
 
 impl FromStr for Entity {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.split(' ');
+        let mut s = s.split(' ').filter(|s| !s.is_empty());
         let x = s
             .next()
             .ok_or_else(|| "Expected x".to_string())?

@@ -1,4 +1,4 @@
-use crate::asset_mgr::GraphicsHolder;
+use gamefox::asset_mgr::GraphicsHolder;
 use sdl2::render::TextureCreator;
 use sdl2::surface::Surface;
 use sdl2::rect::{Rect, Point};

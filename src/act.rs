@@ -1,12 +1,43 @@
 use std::str::FromStr;
 use crate::entity::Entity;
+use std::fmt;
 
+#[derive(PartialEq, Debug)]
 pub struct ActFile {
     pub version: String,
     pub name: String,
     pub entities: Vec<Entity>,
     pub width: usize,
     pub tiles: Vec<Option<(usize, u32)>>,
+}
+
+impl fmt::Display for ActFile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}", self.version)?;
+        writeln!(f, "{}", self.name)?;
+        for entity in self.entities.iter() {
+            writeln!(f, "{}", entity)?;
+        }
+        writeln!(f, "E")?;
+        writeln!(f, "NORMAL\nEmeraldHillZone.png\nEmeraldHillZone/Block\nEmeraldHillZone/Background/")?;
+
+        let tile_count = self.tiles.iter().copied().filter(Option::is_some).count();
+        writeln!(f, "{}", tile_count)?;
+        writeln!(f, "{} {}", self.width, self.tiles.len() / self.width)?;
+
+        let tiles = self.tiles
+            .iter()
+            .copied()
+            .enumerate()
+            .filter_map(|(i, t)| Some((i, t?)))
+            .map(|(i, t)| ((i % self.width, i / self.width), t));
+
+        for ((x, y), (block_idx, block_flags)) in tiles {
+            writeln!(f, "{} {} {} {}", x * 128, y * 128, block_idx, block_flags)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl FromStr for ActFile {
@@ -50,7 +81,8 @@ impl FromStr for ActFile {
             let mut numbers = lines
                 .next()
                 .ok_or_else(|| "Expected width and height".to_string())?
-                .split(' ');
+                .split(' ')
+                .filter(|s| !s.is_empty());
 
             let width = numbers
                 .next()
@@ -74,7 +106,7 @@ impl FromStr for ActFile {
         let mut tiles: Vec<Option<(usize, u32)>> = Vec::new();
         tiles.resize(width * height, None);
         for (_idx, line) in (0..tile_count).zip(lines.by_ref()) {
-            let mut numbers = line.split(' ');
+            let mut numbers = line.split(' ').filter(|s| !s.is_empty());
 
             let x = numbers
                 .next()
