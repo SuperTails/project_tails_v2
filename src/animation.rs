@@ -4,6 +4,7 @@ use crate::renderable::Renderable;
 use sdl2::rect::Rect;
 use sdl2::render::{Canvas, RenderTarget};
 use std::time::{Duration, Instant};
+use crate::camera::Camera;
 
 /// The animation class itself does not implement renderable,
 /// only for `(Vector2, &Animation)`. This is because
@@ -55,8 +56,9 @@ impl Animation {
 }
 
 impl Renderable for (Vector2, &Animation) {
-    fn render<T: RenderTarget>(&self, canvas: &mut Canvas<T>) -> Result<(), String> {
-        let pos = self.0.into_point();
+    fn render<T: RenderTarget>(&self, canvas: &mut Canvas<T>, camera: &Camera) -> Result<(), String> {
+        let pos = Vector2 { x: self.0.x - camera.position.x, y: self.0.y - camera.position.y };
+        let pos = pos.into_point();
         let anim = self.1;
 
         let source = anim.frame_window();

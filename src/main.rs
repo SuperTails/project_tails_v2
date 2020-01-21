@@ -5,6 +5,7 @@ mod block;
 mod physical;
 mod player;
 mod renderable;
+mod camera;
 
 use act::ActFile;
 use asset_mgr::{GraphicsHolder, GRAPHICS_HOLDER};
@@ -17,6 +18,9 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 use block::{Block, Tileset};
+use camera::Camera;
+use physical::{Physical, Vector2};
+use sdl2::rect::Point;
 
 fn main() {
     let blocks = block::load_blocks(Path::new("./assets/EmeraldHillZone/"), "Block").unwrap();
@@ -41,19 +45,36 @@ fn main() {
     let mut canvas = window.into_canvas().build().unwrap();
     let creator = Box::leak(Box::new(canvas.texture_creator()));
 
+    let mut camera = Camera { position: Vector2 { x: 0.0, y: 0.0 }};
+
     let holder = GraphicsHolder::load_all(Path::new("./assets/"), creator);
     println!("Loaded {} textures", holder.0.len());
     GRAPHICS_HOLDER.set(Mutex::new(holder)).ok().unwrap();
 
-    for (idx, block) in blocks.iter().enumerate() {
-        Block::add_graphics(format!("BLOCK{}", idx), block, &tileset, &canvas, creator);
-    }
+    Block::add_graphics_multi(
+        blocks.iter().enumerate().map(|(i, block)| (format!("BLOCK{}", i), block)),
+        &tileset,
+        &canvas,
+        creator,
+    );
+
+    let collision_map = block::parse_collision_map("CollisionTiles");
+
+    let getter = block::TerrainGetter::new(
+        act_file.width,
+        &act_file.tiles,
+        &blocks,
+        &collision_map,
+    );
 
     let mut player = Player::new();
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     'running: loop {
-        player.update();
+        player.update(&getter);
+        camera.position = player.get_position();
+        camera.position.x -= 400.0;
+        camera.position.y -= 300.0;
 
         for event in event_pump.poll_iter() {
             match event {
@@ -68,13 +89,25 @@ fn main() {
             }
         }
 
-
         canvas.set_draw_color(Color::RGB(20, 20, 20));
         canvas.clear();
         for r in 0..act_file.tiles.len() / act_file.width {
             for c in 0..act_file.width {
                 let x = c * 128;
                 let y = r * 128;
+
+                let x = x as f64 - camera.position.x;
+                let y = y as f64 - camera.position.y;
+
+                canvas.set_draw_color(Color::RGB(255, 255, 255));
+                canvas.draw_line(
+                    Point::new(x as i32, y as i32),
+                    Point::new(x as i32, y as i32 + 600),
+                ).unwrap();
+                canvas.draw_line(
+                    Point::new(x as i32, y as i32),
+                    Point::new(x as i32 + 600, y as i32),
+                ).unwrap();
 
                 if let Some((block_idx, _block_flags)) = act_file.tiles[r * act_file.width + c] {
                     canvas.copy(
@@ -85,7 +118,7 @@ fn main() {
                 }
             }
         }
-        player.render(&mut canvas).unwrap();
+        player.render(&mut canvas, &camera).unwrap();
         canvas.present();
 
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
